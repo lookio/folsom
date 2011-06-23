@@ -67,10 +67,10 @@ get_last_events(Name, Count) ->
     get_prev_event(Name, LastKey, Count, []).
 
 % get_prev_event/4 used by get_last_events/2
-get_prev_event(_, '$end_of_table', _, Acc) ->
-    Acc;
-get_prev_event(Name, Key, Count, Acc) when length(Acc) < Count ->
+get_prev_event(_Name, Key, Count, Acc)
+  when Count =:= 0 orelse Key =:= '$end_of_table' ->
+    lists:reverse(Acc);
+get_prev_event(Name, Key, Count, Acc) ->
     Event = ets:lookup(Name, Key),
-    get_prev_event(Name, ets:prev(Name, Key), Count, lists:append(Acc, Event));
-get_prev_event(_, _, _, Acc) ->
-    Acc.
+    get_prev_event(Name, ets:prev(Name, Key), Count - 1, [Event|Acc]).
+
