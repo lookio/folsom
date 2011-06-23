@@ -80,15 +80,13 @@ delete_handler(Name) ->
     gen_event:delete_handler(?EVENTMGR, {?MODULE, Name}, []).
 
 handler_exists(Name) ->
-    {_, Handlers} = lists:unzip(gen_event:which_handlers(?EVENTMGR)),
-    lists:member(Name, Handlers).
+    lists:keymember(Name, 2, gen_event:which_handlers(?EVENTMGR)).
 
 notify(Event) ->
     gen_event:notify(?EVENTMGR, Event).
 
 get_handlers() ->
-    {_, Handlers} = lists:unzip(gen_event:which_handlers(?EVENTMGR)),
-    Handlers.
+    [ Handler || {_, Handler} <- gen_event:which_handlers(?EVENTMGR) ].
 
 get_handlers_info() ->
     Handlers = get_handlers(),
