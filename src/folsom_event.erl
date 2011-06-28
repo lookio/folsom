@@ -151,7 +151,13 @@ init([history, Name, SampleSize]) ->
 init([meter, Name]) ->
     {ok, _} = timer:send_interval(?DEFAULT_INTERVAL, {meter_tick, Name}),
     folsom_metrics_meter:new(Name),
-    {ok, #metric{name = Name, type = meter}}.
+    {ok, #metric{name = Name, type = meter}};
+%% Meter Reader
+init([meter_reader, Name]) ->
+    {ok, _} = timer:send_interval(?DEFAULT_INTERVAL, {meter_reader_tick, Name}),
+    folsom_metrics_meter_reader:new(Name),
+    {ok, #metric{name = Name, type = meter_reader}}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,6 +196,10 @@ handle_event({Name, Value}, #metric{name = Name1, type = history, history_size =
 %% Meter
 handle_event({Name, Value}, #metric{name = Name1, type = meter} = State) when Name == Name1 ->
     folsom_metrics_meter:mark(Name, Value),
+    {ok, State};
+%% Meter Reader
+handle_event({Name, Value}, #metric{name = Name1, type = meter_reader} = State) when Name == Name1 ->
+    folsom_metrics_meter_reader:mark(Name, Value),
     {ok, State};
 handle_event(_, State) ->
     {ok, State}.
@@ -235,7 +245,12 @@ handle_call({history, Name}, State) ->
 %% Meter
 handle_call({meter, Name}, State) ->
     Values = folsom_metrics_meter:get_values(Name),
+    {ok, Values, State};
+%% Meter Reader
+handle_call({meter_reader, Name}, State) ->
+    Values = folsom_metrics_meter_reader:get_values(Name),
     {ok, Values, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -252,6 +267,9 @@ handle_call({meter, Name}, State) ->
 %%--------------------------------------------------------------------
 handle_info({meter_tick, Name}, #metric{name = Name1} = State) when Name == Name1->
     folsom_metrics_meter:tick(Name),
+    {ok, State};
+handle_info({meter_reader_tick, Name}, #metric{name = Name1} = State) when Name == Name1->
+    folsom_metrics_meter_reader:tick(Name),
     {ok, State};
 handle_info(_Info, State) ->
     {ok, State}.
@@ -281,6 +299,9 @@ terminate(_, #metric{name = Name, type = history}) ->
     ok;
 terminate(_, #metric{name = Name, type = meter}) ->
     ets:delete(?METER_TABLE, Name),
+    ok;
+terminate(_, #metric{name = Name, type = meter_reader}) ->
+    ets:delete(?METER_READER_TABLE, Name),
     ok;
 terminate(_Reason, _State) ->
     ok.

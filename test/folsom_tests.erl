@@ -33,6 +33,7 @@ run_test() ->
     folsom_erlang_checks:populate_metrics(),
     folsom_erlang_checks:check_metrics(),
     folsom_erlang_checks:counter_metric(10000, testcounter),
+    folsom_erlang_checks:meter_metric(),
     folsom_erlang_checks:vm_metrics(),
 
     ibrowse:start(),

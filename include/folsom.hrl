@@ -2,6 +2,7 @@
 -define(GAUGE_TABLE, gauges).
 -define(HISTOGRAM_TABLE, histograms).
 -define(METER_TABLE, meters).
+-define(METER_READER_TABLE, meter_readers).
 -define(HISTORY_TABLE, histories).
 
 -define(DEFAULT_LIMIT, 5).

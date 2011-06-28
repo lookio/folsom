@@ -98,4 +98,5 @@ setup_ets_tables() ->
     ets:new(?GAUGE_TABLE, [set, named_table, public]),
     ets:new(?HISTOGRAM_TABLE, [set, named_table, public]),
     ets:new(?METER_TABLE, [set, named_table, public]),
+    ets:new(?METER_READER_TABLE, [set, named_table, public]),
     ets:new(?HISTORY_TABLE, [set, named_table, public]).

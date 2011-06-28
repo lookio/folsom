@@ -32,7 +32,8 @@
          check_metrics/0,
          delete_metrics/0,
          vm_metrics/0,
-         counter_metric/2
+         counter_metric/2,
+         meter_metric/0
         ]).
 
 -define(DATA, [1, 5, 10, 100, 200, 500, 750, 1000, 2000, 5000]).
@@ -47,8 +48,9 @@ create_metrics() ->
 
     ok = folsom_metrics:new_history(history),
     ok = folsom_metrics:new_meter(meter),
+    ok = folsom_metrics:new_meter_reader(meter_reader),
 
-    7 = length(folsom_metrics:get_metrics()).
+    8 = length(folsom_metrics:get_metrics()).
 
 populate_metrics() ->
     ok = folsom_metrics:notify({counter, {inc, 1}}),
@@ -61,7 +63,8 @@ populate_metrics() ->
     [ok = folsom_metrics:notify({none, Value}) || Value <- ?DATA],
 
     ok = folsom_metrics:notify({history, "4"}),
-    ok = folsom_metrics:notify({meter, 5}).
+    ok = folsom_metrics:notify({meter, 5}),
+    ok = folsom_metrics:notify({meter_reader, 5}).
 
 check_metrics() ->
     0 = folsom_metrics:get_metric_value(counter),
@@ -78,7 +81,10 @@ check_metrics() ->
     1 = length(folsom_metrics:get_metric_value(history)),
 
     Meter = folsom_metrics:get_metric_value(meter),
-    0 > proplists:get_value(one, Meter).
+    MeterReader = folsom_metrics:get_metric_value(meter_reader),
+    MeterKeys = [acceleration, fifteen, five, mean, one],
+    ?assertEqual(MeterKeys, lists:sort(proplists:get_keys(Meter))),
+    ?assertEqual(MeterKeys, lists:sort(proplists:get_keys(MeterReader))).
 
 delete_metrics() ->
     ok = folsom_metrics:delete_metric(counter),
@@ -89,7 +95,8 @@ delete_metrics() ->
     ok = folsom_metrics:delete_metric(none),
 
     ok = folsom_metrics:delete_metric(history),
-    ok = folsom_metrics:delete_metric(meter).
+    ok = folsom_metrics:delete_metric(meter),
+    ok = folsom_metrics:delete_metric(meter_reader).
 
 vm_metrics() ->
     List1 = folsom_vm_metrics:get_memory(),
@@ -111,6 +118,25 @@ counter_metric(Count, Counter) ->
     ?debugFmt("counter result: ~p~n", [Result]),
 
     0 = Result.
+
+meter_metric() ->
+    Meter = <<"meter_test">>,
+    MeterReader = <<"meter_reader_test">>,
+    ok = folsom_metrics:new_meter(Meter),
+    ok = folsom_metrics:new_meter_reader(MeterReader),
+    lists:foreach(fun(I) ->
+                          folsom_metrics:notify({Meter, 1}),
+                          folsom_metrics:notify({MeterReader, I})
+                  end, lists:seq(1, 200)),
+    MeterMean = proplists:get_value(mean,
+                                    folsom_metrics:get_metric_value(Meter)),
+    MeterReaderMean = proplists:get_value(mean,
+                                          folsom_metrics:get_metric_value(MeterReader)),
+    ?assert(close_enough(MeterMean, MeterReaderMean, 0.05)).
+
+close_enough(A, B, Tol) ->
+    Val = abs(A - B) / max(A, B),
+    Val < Tol.
 
 %% internal function
 
@@ -169,7 +195,7 @@ counter_inc_dec(Counter) ->
 
 for(N, Counter) ->
     for(N, 0, Counter).
-for(N, Count, Counter) when N == Count ->
+for(N, Count, _Counter) when N == Count ->
     ok;
 for(N, LoopCount, Counter) ->
     counter_inc_dec(Counter),
