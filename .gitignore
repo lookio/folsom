@@ -1,3 +1,5 @@
 ebin
 *.beam
 priv/log
+deps
+.eunit
