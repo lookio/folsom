@@ -173,7 +173,10 @@ init([meter_reader, Name]) ->
 %% @end
 %%--------------------------------------------------------------------
 
-%% Counter Increment
+%% Bulk update to cut down on message passing
+handle_event({Name, Values}, #metric{name = Name, type = Type} = State) when is_list(Values) ->
+    bulk_update_metric(Type, Name, Values, State),
+    {ok, State};
 handle_event({Name, {inc, Value}}, #metric{name = Name1, type = counter} = State) when Name == Name1 ->
     folsom_metrics_counter:inc(Name, Value),
     {ok, State};
@@ -340,3 +343,36 @@ maybe_add_handler(Type, Name, SampleType, SampleSize, Alpha, false) ->
     gen_event:add_handler(?EVENTMGR, {?MODULE, Name}, [Type, Name, SampleType, SampleSize, Alpha]);
 maybe_add_handler(_, Name, _, _, _, true) ->
     {metric_already_exists, Name}.
+
+bulk_update_metric(counter, Name, Values, _State) ->
+    update_counter(Name, Values);
+bulk_update_metric(gauge, Name, Values, _State) ->
+    [folsom_metrics_gauge:update(Name, Value) || Value <- Values],
+    ok;
+bulk_update_metric(histogram, Name, Values, _State) ->
+    [folsom_metrics_histogram:update(Name, Value) || Value <- Values],
+    ok;
+bulk_update_metric(history, Name, Values, #metric{history_size = HistorySize}) ->
+    [folsom_metrics_history:update(Name, HistorySize, Value) || Value <- Values],
+    ok;
+bulk_update_metric(meter, Name, Values, _State) ->
+    [folsom_metrics_meter:mark(Name, Value) || Value <- Values],
+    ok;
+bulk_update_metric(meter_reader, Name, Values, _State) ->
+    [folsom_metrics_meter_reader:mark(Name, Value) || Value <- Values],
+    ok;
+bulk_update_metric(_, _Name, _Values, _State) ->
+    ok.
+
+
+
+update_counter(_Name, []) ->
+    ok;
+update_counter(Name, [{inc, Value}|T]) ->
+    folsom_metrics_counter:inc(Name, Value),
+    update_counter(Name, T);
+update_counter(Name, [{dec, Value}|T]) ->
+    folsom_metrics_counter:dec(Name, Value),
+    update_counter(Name, T).
+
+
