@@ -179,16 +179,15 @@ which_bin(_, [], [{Bin, _} | _]) ->
 % my best estimation of excess kurtosis thus far
 % http://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm
 get_kurtosis([], _, _, _) -> 0;
-get_kurtosis([], _, 0.0, _) -> 0;
-get_kurtosis([], _, 0, _) -> 0;
+get_kurtosis(_Values, _, StdDev, Count) when StdDev == 0.0 orelse Count < 2 -> 0;
 get_kurtosis(Values, Mean, StdDev, Count) ->
     List1 = [math:pow(Value - Mean, 4) || Value <- Values],
     (lists:sum(List1) / ((Count - 1) * math:pow(StdDev, 4)) ) - 3.
 
 % results match excel calculation in my testing
 get_skewness([], _, _, _) -> 0;
-get_skewness([], _, 0.0, _) -> 0;
-get_skewness([], _, 0, _) -> 0;
+get_skewness(_Values, _, StdDev, Count) when StdDev == 0.0 orelse Count < 3 -> 0;
 get_skewness(Values, Mean, StdDev, Count) ->
     List = [math:pow((Value - Mean) / StdDev, 3) * Count || Value <- Values],
     lists:sum(List) / ( (Count - 1) * (Count - 2) ).
+
